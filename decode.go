@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"encoding/base64"
 )
 
 // Decoder is the object that holds the state of the decoding
@@ -75,6 +76,7 @@ func (d *Decoder) AllocString() {
 //  net.IP for IP addresses (ip("1.2.3.4") or ip("fd00::1"))
 //  net.TCPAddr for ip/port pairs (ipport("1.2.3.4:5678") or ipport("[fd00::1]:5678")
 //  time.Time for timestamps (datetime("2006-01-02T15:04:05Z07:00"))
+//  []byte for base64-encoded bytes (bytes("YWJjZA=="))
 //	[]interface{}, for arrays
 //	map[string]interface{}, for objects
 //	nil for null
@@ -172,6 +174,8 @@ func (d *Decoder) any() (interface{}, error) {
 			return d.ip()
 		case "ipport":
 			return d.ipport()
+		case "bytes":
+			return d.bytes()
 		case "int8":
 			return d.int8()
 		case "int16":
@@ -261,6 +265,14 @@ func (d *Decoder) ipport() (net.TCPAddr, error) {
 	}
 
 	return net.TCPAddr{}, d.error(' ', "invalid ipport")
+}
+
+func (d *Decoder) bytes() ([]byte, error) {
+	str, err := d.bracketExpr()
+	if err != nil {
+		return nil, err
+	}
+	return base64.StdEncoding.DecodeString(str)
 }
 
 func (d *Decoder) uint() (uint, error) {
