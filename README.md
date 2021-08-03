@@ -28,11 +28,12 @@ Example:
   k18: ipport("192.168.1.2:65000"),
   k19: ip("::1"),
   k20: ipport("[::1]:65000"),
-  k21: [
+  k21: bytes("YWJjZA==")),
+  k22: [
     "test",
     int(123),
   ],
-  k22: {
+  k23: {
     test: true
   }
 }
