@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"reflect"
 	"time"
+	"encoding/base64"
 )
 
 const (
@@ -35,6 +36,7 @@ type memWriter struct {
 
 type Encoder struct {
 	w              writer
+	base64Encoder  io.WriteCloser
 	pretty         bool
 	prefix, indent string
 
@@ -109,6 +111,8 @@ func (e *Encoder) encodeValue(v interface{}) (err error) {
 		err = e.encodeMap(v)
 	case []interface{}:
 		err = e.encodeArray(v)
+	case []byte:
+		err = e.encodeBytes(v)
 	case int:
 		err = e.encodeInt(v)
 	case nil:
@@ -524,6 +528,26 @@ func (e *Encoder) encodeSlice(s reflect.Value) error {
 	}
 
 	return e.w.WriteByte(']')
+}
+
+func (e *Encoder) encodeBytes(b []byte) error {
+	_, err := e.w.WriteString("bytes(\"")
+	if err != nil {
+		return err
+	}
+	if e.base64Encoder == nil {
+		e.base64Encoder = base64.NewEncoder(base64.StdEncoding, e.w)
+	}
+	_, err = e.base64Encoder.Write(b)
+	if err != nil {
+		return err
+	}
+	err = e.base64Encoder.Close()
+	if err != nil {
+		return err
+	}
+	_, err = e.w.WriteString("\")")
+	return err
 }
 
 func (e *Encoder) encodeString(str string) (err error) {
