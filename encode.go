@@ -8,6 +8,7 @@ import (
 	"net"
 	"sort"
 	"strconv"
+	"reflect"
 	"time"
 )
 
@@ -151,7 +152,12 @@ func (e *Encoder) encodeValue(v interface{}) (err error) {
 	case float64:
 		err = e.encodeFloat64(v)
 	default:
-		err = fmt.Errorf("Unsupported value type: %T", v)
+		switch v1 := reflect.ValueOf(v); v1.Kind() {
+		case reflect.Slice:
+			err = e.encodeSlice(v1)
+		default:
+			err = fmt.Errorf("Unsupported value type: %T", v)
+		}
 	}
 
 	return
@@ -459,6 +465,51 @@ func (e *Encoder) encodeArray(a []interface{}) error {
 			first = false
 		}
 		err = e.encodeValue(v)
+		if err != nil {
+			return err
+		}
+	}
+
+	if e.pretty {
+		e.level--
+		err := e.writeIndent()
+		if err != nil {
+			return err
+		}
+	}
+
+	return e.w.WriteByte(']')
+}
+
+func (e *Encoder) encodeSlice(s reflect.Value) error {
+	err := e.w.WriteByte('[')
+	if err != nil {
+		return err
+	}
+	if e.pretty {
+		e.level++
+		err := e.writeIndent()
+		if err != nil {
+			return err
+		}
+	}
+	first := true
+	for i := 0; i < s.Len(); i++ {
+		if !first {
+			err = e.w.WriteByte(',')
+			if err != nil {
+				return err
+			}
+			if e.pretty {
+				err = e.writeIndent()
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			first = false
+		}
+		err = e.encodeValue(s.Index(i).Interface())
 		if err != nil {
 			return err
 		}
